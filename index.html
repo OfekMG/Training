@@ -16,8 +16,8 @@
             theme: {
                 extend: {
                     colors: {
-                        obsidian: '#0B0C10',
-                        glass: 'rgba(31, 40, 51, 0.6)',
+                        obsidian: '#050507',
+                        glass: 'rgba(20, 25, 30, 0.45)',
                         cyan: { 400: '#45F3FF', 500: '#00E5FF' },
                         red: { 500: '#FF2A2A' },
                         green: { 400: '#39FF14' },
@@ -31,13 +31,24 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
 
     <style>
-        body { background-color: #0B0C10; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .glass-panel { background: rgba(31, 40, 51, 0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        /* Hide scrollbar for clean UI */
+        body { 
+            background-color: #050507; 
+            background-image: radial-gradient(circle at 50% 0%, #111822 0%, #050507 70%);
+            color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            min-height: 100vh;
+        }
+        /* Enhanced Glass-morphism */
+        .glass-panel { 
+            background: rgba(15, 20, 25, 0.4); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 229, 255, 0.08); 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
         ::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -45,10 +56,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
         const { motion, AnimatePresence } = window.Motion;
 
-        // --- Custom Hook: Persistent Storage ---
         const useLocalStorage = (key, initialValue) => {
             const [storedValue, setStoredValue] = useState(() => {
                 try {
@@ -72,7 +82,6 @@
             return [storedValue, setValue];
         };
 
-        // --- Core Logic & Scheduling ---
         const SCHEDULE = [
             { day: 'Sun', type: 'Easy Cardio', desc: 'Zone 2, 110-130 BPM', color: 'text-cyan-400' },
             { day: 'Mon', type: 'Hard Endurance', desc: '30m+ in Zone 4/5', color: 'text-red-500' },
@@ -88,25 +97,22 @@
             const weekInCycle = (weekNumber - 1) % 3;
             let currentBaseline = baseVolume * Math.pow(1.1, cycle);
             
-            if (weekInCycle === 0) return currentBaseline; // Baseline
-            if (weekInCycle === 1) return currentBaseline * 1.1; // Push
-            return (currentBaseline * 1.1) * 0.5; // De-load
+            if (weekInCycle === 0) return currentBaseline;
+            if (weekInCycle === 1) return currentBaseline * 1.1;
+            return (currentBaseline * 1.1) * 0.5;
         };
 
-        // --- Main App Component ---
         const App = () => {
-            // Persistent State
             const [currentWeek, setCurrentWeek] = useLocalStorage('rhr_currentWeek', 1);
-            const [baseVolume] = useLocalStorage('rhr_baseVolume', 60); // Starting at 60m
+            const [baseVolume] = useLocalStorage('rhr_baseVolume', 60);
             const [completedDays, setCompletedDays] = useLocalStorage('rhr_completedDays', {});
             const [dailyRecovery, setDailyRecovery] = useLocalStorage('rhr_dailyRecovery', {});
-            const [checklist, setChecklist] = useLocalStorage('rhr_checklist', { caffeine: false, water: false, fast: false, nasal: false });
+            // Check for older 'caffeine' key to prevent breaking, but default to 'sunlight'
+            const [checklist, setChecklist] = useLocalStorage('rhr_checklist', { sunlight: false, water: false, fast: false, nasal: false });
             
-            // Ephemeral UI State
             const [currentDayIndex, setCurrentDayIndex] = useState(new Date().getDay());
             const [showPraise, setShowPraise] = useState(false);
 
-            // Derived Data
             const activeVolume = calculateVolumeRatchet(baseVolume, currentWeek);
             const phase = (currentWeek - 1) % 3 === 0 ? 'Baseline' : (currentWeek - 1) % 3 === 1 ? 'Push (+10%)' : 'De-load (-50%)';
             const todayWorkout = SCHEDULE[currentDayIndex];
@@ -114,7 +120,49 @@
             const isCompleted = !!completedDays[todayKey];
             const currentRecovery = dailyRecovery[todayKey] || null;
 
-            // Daily Recovery Logic Modifier
+            // Derived Data: Tomorrow's Forecast
+            const tomorrowIndex = (currentDayIndex + 1) % 7;
+            const tomorrowWeek = currentDayIndex === 6 ? currentWeek + 1 : currentWeek;
+            const tomorrowWorkout = SCHEDULE[tomorrowIndex];
+            const tomorrowVolume = calculateVolumeRatchet(baseVolume, Math.min(tomorrowWeek, 12));
+
+            // Derived Data: Streak & Sparkline Engine
+            const { streak, sparkline } = useMemo(() => {
+                let currentStreak = 0;
+                let w = currentWeek;
+                let d = currentDayIndex;
+                
+                // Calculate backwards for sparkline (last 7 days)
+                let tempSparkline = [];
+                let tempW = currentWeek;
+                let tempD = currentDayIndex;
+                for(let i=0; i<7; i++) {
+                    tempSparkline.unshift({ 
+                        completed: !!completedDays[`w${tempW}-d${tempD}`], 
+                        isToday: i === 0 
+                    });
+                    tempD--;
+                    if (tempD < 0 && tempW > 1) { tempD = 6; tempW--; }
+                    else if (tempD < 0) { tempD = 0; } // Floor at w1-d0
+                }
+
+                // Calculate ongoing continuity streak
+                if (completedDays[`w${w}-d${d}`]) currentStreak++;
+                d--;
+                if (d < 0) { d = 6; w--; }
+
+                while (w > 0) {
+                    if (completedDays[`w${w}-d${d}`]) {
+                        currentStreak++;
+                        d--;
+                        if (d < 0) { d = 6; w--; }
+                    } else {
+                        break;
+                    }
+                }
+                return { streak: currentStreak, sparkline: tempSparkline };
+            }, [completedDays, currentWeek, currentDayIndex]);
+
             let suggestedAdjustment = null;
             if (currentRecovery === 'Red' && (todayWorkout.type === 'Hard Endurance' || todayWorkout.type === 'HIIT')) {
                 suggestedAdjustment = "Shift to Light Breathwork or 20m Mobility (Recovery overridden).";
@@ -122,91 +170,69 @@
                 suggestedAdjustment = "Cap Zone 4 at 15m max. Focus on form over output.";
             }
 
-            // Handlers
             const handleComplete = () => {
                 setCompletedDays(prev => ({ ...prev, [todayKey]: true }));
                 setShowPraise(true);
-                setTimeout(() => setShowPraise(false), 6000);
+                setTimeout(() => setShowPraise(false), 4500);
             };
 
-            const handleRecoverySelect = (color) => {
-                setDailyRecovery(prev => ({ ...prev, [todayKey]: color }));
-            };
-
-            const toggleChecklist = (key) => {
-                setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
-            };
-
-            const advanceWeek = () => {
-                if (currentWeek < 12) setCurrentWeek(prev => prev + 1);
-            };
-
-            const resetData = () => {
-                if(window.confirm("Clear all protocol data and reset to Week 1?")) {
-                    window.localStorage.clear();
-                    window.location.reload();
-                }
-            };
+            const toggleChecklist = (key) => setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
 
             return (
                 <div className="min-h-screen p-4 md:p-8 flex flex-col items-center max-w-lg mx-auto">
                     
                     {/* Header & Hebbian Progress */}
                     <header className="w-full mb-8 mt-4">
-                        <h1 className="text-2xl font-bold tracking-wider mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase">
-                            Neuro-RHR Protocol
-                        </h1>
-                        <div className="flex justify-between text-xs text-gray-400 mb-2 uppercase tracking-widest">
+                        <div className="flex justify-between items-end mb-2">
+                            <h1 className="text-2xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase">
+                                Neuro-RHR
+                            </h1>
+                            <div className="text-right">
+                                <span className="text-xs text-cyan-500 font-mono tracking-widest uppercase block mb-1">Neural Continuity</span>
+                                <span className="text-xl font-bold">{streak} <span className="text-sm text-gray-500">Days</span></span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between text-xs text-gray-400 mb-2 uppercase tracking-widest mt-4">
                             <span>Hebbian Wiring</span>
                             <span>Week {currentWeek} / 12 ({phase})</span>
                         </div>
-                        <div className="w-full bg-gray-900 rounded-full h-2 border border-gray-800 overflow-hidden relative">
+                        
+                        {/* 12-Week Macro Progress */}
+                        <div className="w-full bg-gray-900 rounded-full h-1.5 border border-gray-800 overflow-hidden relative mb-4">
                             <motion.div 
-                                className="bg-cyan-500 h-full rounded-full shadow-[0_0_15px_#00E5FF]"
+                                className="bg-cyan-500 h-full rounded-full shadow-[0_0_10px_#00E5FF]"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${(currentWeek / 12) * 100}%` }}
                                 transition={{ duration: 1, ease: "easeOut" }}
                             />
                         </div>
+
+                        {/* 7-Day Sparkline */}
+                        <div className="flex space-x-1.5 h-1.5 w-full">
+                            {sparkline.map((day, i) => (
+                                <div key={i} className={`flex-1 rounded-full ${day.completed ? 'bg-cyan-400 shadow-[0_0_8px_rgba(0,229,255,0.6)]' : 'bg-gray-800'} ${day.isToday && !day.completed ? 'animate-pulse bg-gray-600' : ''}`} />
+                            ))}
+                        </div>
                     </header>
 
                     {/* Bio-Optimization Checklist */}
                     <section className="w-full glass-panel rounded-xl p-5 mb-6">
-                        <h2 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest border-b border-gray-800 pb-2">Bio-Optimization Targets</h2>
+                        <h2 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest border-b border-gray-800/50 pb-2">Bio-Optimization Targets</h2>
                         <div className="grid grid-cols-2 gap-4 text-sm">
                             {[
-                                { id: 'caffeine', label: 'No Caffeine > 12:00' },
+                                { id: 'sunlight', label: 'Morning Sunlight 15m' },
                                 { id: 'water', label: '3L Hydration' },
                                 { id: 'fast', label: '4hr Pre-Sleep Fast' },
                                 { id: 'nasal', label: 'Nasal Breathing Only' }
                             ].map(item => (
                                 <label key={item.id} className="flex items-center space-x-3 cursor-pointer group">
                                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${checklist[item.id] ? 'bg-cyan-500 border-cyan-500' : 'border-gray-600 group-hover:border-cyan-500'}`}>
-                                        {checklist[item.id] && <span className="text-black text-xs">✓</span>}
+                                        {checklist[item.id] && <span className="text-black text-xs font-bold">✓</span>}
                                     </div>
-                                    <input type="checkbox" className="hidden" checked={checklist[item.id]} onChange={() => toggleChecklist(item.id)} />
+                                    <input type="checkbox" className="hidden" onChange={() => toggleChecklist(item.id)} />
                                     <span className={`transition-colors ${checklist[item.id] ? 'text-gray-200' : 'text-gray-500 group-hover:text-gray-300'}`}>{item.label}</span>
                                 </label>
-                            ))}
-                        </div>
-                    </section>
-
-                    {/* Daily Recovery Input */}
-                    <section className="w-full mb-6">
-                        <h2 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-widest pl-1">Morning Recovery Score</h2>
-                        <div className="flex space-x-3">
-                            {['Green', 'Yellow', 'Red'].map((color) => (
-                                <button 
-                                    key={color}
-                                    onClick={() => handleRecoverySelect(color)}
-                                    className={`flex-1 py-3 rounded-lg font-bold text-xs tracking-widest uppercase transition-all duration-300 ${
-                                        currentRecovery === color 
-                                        ? `bg-${color.toLowerCase()}-400/20 text-${color.toLowerCase()}-400 border border-${color.toLowerCase()}-400 shadow-[0_0_15px_rgba(var(--color-${color.toLowerCase()}-400),0.3)]` 
-                                        : 'glass-panel text-gray-500 hover:bg-gray-800 hover:text-gray-300'
-                                    }`}
-                                >
-                                    {color}
-                                </button>
                             ))}
                         </div>
                     </section>
@@ -217,27 +243,23 @@
                         initial={{ y: 20, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                     >
-                        <div className="absolute top-0 right-0 p-4 opacity-5 text-7xl font-black pointer-events-none">
+                        <div className="absolute top-0 right-0 p-4 opacity-[0.03] text-8xl font-black pointer-events-none">
                             {todayWorkout.day}
                         </div>
-                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Today's Protocol</h2>
+                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Current Session</h2>
                         <h3 className={`text-3xl font-bold mb-2 tracking-tight ${todayWorkout.color}`}>{todayWorkout.type}</h3>
                         <p className="text-gray-300 mb-6 font-medium">{todayWorkout.desc}</p>
                         
-                        <div className="bg-black/60 p-4 rounded-xl border border-gray-800 inline-block mb-6 shadow-inner">
+                        <div className="bg-black/40 p-4 rounded-xl border border-gray-800/50 inline-block mb-6 shadow-inner">
                             <span className="text-xs text-gray-500 uppercase block mb-1 font-bold tracking-wider">Target Volume</span>
-                            <span className="text-2xl font-mono text-cyan-400">{Math.round(activeVolume)} <span className="text-sm text-gray-400 uppercase">Mins</span></span>
+                            <span className="text-2xl font-mono text-cyan-400">{Math.round(activeVolume)} <span className="text-sm text-gray-500 uppercase">Mins</span></span>
                         </div>
 
                         {suggestedAdjustment && (
-                            <motion.div 
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-400 text-sm font-medium leading-relaxed"
-                            >
+                            <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-400 text-sm font-medium leading-relaxed">
                                 <span className="block mb-1 text-xs uppercase tracking-widest text-yellow-500">System Override Active</span>
                                 {suggestedAdjustment}
-                            </motion.div>
+                            </div>
                         )}
 
                         <button 
@@ -246,12 +268,26 @@
                             className={`w-full py-4 rounded-xl font-bold tracking-widest uppercase transition-all duration-300 relative overflow-hidden ${
                                 isCompleted 
                                 ? 'bg-green-500/10 text-green-500 border border-green-500/30 cursor-not-allowed'
-                                : 'bg-cyan-500 text-obsidian hover:bg-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.4)] hover:shadow-[0_0_30px_rgba(0,229,255,0.6)]'
+                                : 'bg-cyan-500 text-obsidian hover:bg-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.3)] hover:shadow-[0_0_35px_rgba(0,229,255,0.5)]'
                             }`}
                         >
-                            {isCompleted ? 'Protocol Executed ✓' : 'Execute Protocol'}
+                            {isCompleted ? 'Session Integrated ✓' : 'Complete Session'}
                         </button>
                     </motion.section>
+
+                    {/* Tomorrow's Forecast (Mental Priming) */}
+                    <section className="w-full mt-4 glass-panel rounded-xl p-4 border-dashed border-gray-700/50 opacity-80 hover:opacity-100 transition-opacity">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Up Next ({tomorrowWorkout.day})</h4>
+                                <span className={`text-sm font-bold ${tomorrowWorkout.color}`}>{tomorrowWorkout.type}</span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Forecast Vol</span>
+                                <span className="text-sm font-mono text-gray-300">{Math.round(tomorrowVolume)}m</span>
+                            </div>
+                        </div>
+                    </section>
 
                     {/* Dopaminergic Feedback Toast */}
                     <AnimatePresence>
@@ -263,23 +299,16 @@
                                 className="fixed bottom-8 left-4 right-4 md:left-auto md:right-auto md:w-[26rem] glass-panel bg-obsidian/95 border-cyan-500/50 p-5 rounded-xl shadow-[0_10px_40px_rgba(0,229,255,0.2)] z-50 backdrop-blur-xl"
                             >
                                 <h4 className="text-cyan-400 font-bold mb-2 flex items-center text-sm uppercase tracking-widest">
-                                    <span className="mr-2 text-lg">⚡</span> Neural Integration Active
+                                    <span className="mr-2 text-lg">⚡</span> Structural Integrity Reinforced
                                 </h4>
-                                <p className="text-sm text-gray-300 leading-relaxed">
+                                <p className="text-sm text-gray-200 leading-relaxed font-medium">
                                     {phase.includes('De-load') 
-                                        ? "Precision executed. By strictly adhering to the de-load parameters, you are allowing systemic supercompensation. You have effectively integrated the necessity of recovery into your physiological modeling." 
-                                        : "Logical integration successful. You pushed through the prescribed threshold, physically reinforcing the neural and cardiovascular pathways required for high-performance endurance. Superb analytical discipline."}
+                                        ? "Systemic recovery initiated: Supercompensation is mathematically inevitable." 
+                                        : "Neural pathways forged: Consistency is the architect of physiological change."}
                                 </p>
                             </motion.div>
                         )}
                     </AnimatePresence>
-                    
-                    {/* Utility Controls */}
-                    <div className="mt-12 flex justify-between items-center w-full text-xs text-gray-600 uppercase tracking-widest font-bold border-t border-gray-800 pt-6">
-                        <button onClick={resetData} className="hover:text-red-500 transition-colors">Reset System</button>
-                        <button onClick={advanceWeek} className="hover:text-cyan-400 transition-colors border border-gray-800 px-3 py-1 rounded">Force Next Week</button>
-                    </div>
-
                 </div>
             );
         };
@@ -288,5 +317,4 @@
         root.render(<App />);
     </script>
 </body>
-
 </html>
