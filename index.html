@@ -21,7 +21,8 @@
                         cyan: { 400: '#45F3FF', 500: '#00E5FF' },
                         red: { 500: '#FF2A2A' },
                         green: { 400: '#39FF14' },
-                        yellow: { 400: '#FFEA00' }
+                        yellow: { 400: '#FFEA00' },
+                        purple: { 400: '#B026FF' }
                     }
                 }
             }
@@ -41,7 +42,6 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             min-height: 100vh;
         }
-        /* Enhanced Glass-morphism */
         .glass-panel { 
             background: rgba(15, 20, 25, 0.4); 
             backdrop-filter: blur(16px); 
@@ -83,19 +83,20 @@
         };
 
         const SCHEDULE = [
-            { day: 'Sun', type: 'Easy Cardio', desc: 'Zone 2, 110-130 BPM', color: 'text-cyan-400' },
-            { day: 'Mon', type: 'Hard Endurance', desc: '30m+ in Zone 4/5', color: 'text-red-500' },
-            { day: 'Tue', type: 'Easy Cardio', desc: 'Zone 2, 110-130 BPM', color: 'text-cyan-400' },
-            { day: 'Wed', type: 'Strength', desc: 'Lower Body / Legs', color: 'text-purple-400' },
-            { day: 'Thu', type: 'Strength', desc: 'Upper Body', color: 'text-purple-400' },
-            { day: 'Fri', type: 'HIIT', desc: '100m/400m sprints or hill repeats', color: 'text-red-500' },
-            { day: 'Sat', type: 'Shabbat Rest', desc: 'Full Recovery', color: 'text-gray-400' }
+            { day: 'Sun', type: 'Easy Cardio', desc: 'Zone 2', color: 'text-cyan-400', baseVol: 60 },
+            { day: 'Mon', type: 'Hard Endurance', desc: '30m+ in Zone 4/5', color: 'text-red-500', baseVol: 45 },
+            { day: 'Tue', type: 'Easy Cardio', desc: 'Zone 2', color: 'text-cyan-400', baseVol: 60 },
+            { day: 'Wed', type: 'Strength', desc: 'Lower Body / Legs', color: 'text-purple-400', baseVol: 45 },
+            { day: 'Thu', type: 'Strength', desc: 'Upper Body', color: 'text-purple-400', baseVol: 45 },
+            { day: 'Fri', type: 'HIIT', desc: 'Zone 4/5 Intervals', color: 'text-red-500', baseVol: 20 },
+            { day: 'Sat', type: 'Shabbat Rest', desc: 'Full Recovery', color: 'text-gray-400', baseVol: 0 }
         ];
 
-        const calculateVolumeRatchet = (baseVolume, weekNumber) => {
+        const calculateVolumeRatchet = (dayBaseVolume, weekNumber) => {
+            if (dayBaseVolume === 0) return 0;
             const cycle = Math.floor((weekNumber - 1) / 3);
             const weekInCycle = (weekNumber - 1) % 3;
-            let currentBaseline = baseVolume * Math.pow(1.1, cycle);
+            let currentBaseline = dayBaseVolume * Math.pow(1.1, cycle);
             
             if (weekInCycle === 0) return currentBaseline;
             if (weekInCycle === 1) return currentBaseline * 1.1;
@@ -104,7 +105,6 @@
 
         const App = () => {
             const [currentWeek, setCurrentWeek] = useLocalStorage('rhr_currentWeek', 1);
-            const [baseVolume] = useLocalStorage('rhr_baseVolume', 60);
             const [completedDays, setCompletedDays] = useLocalStorage('rhr_completedDays', {});
             const [dailyRecovery, setDailyRecovery] = useLocalStorage('rhr_dailyRecovery', {});
             const [checklist, setChecklist] = useLocalStorage('rhr_checklist', { sunlight: false, water: false, fast: false, nasal: false });
@@ -112,20 +112,18 @@
             const [currentDayIndex, setCurrentDayIndex] = useState(new Date().getDay());
             const [showPraise, setShowPraise] = useState(false);
 
-            const activeVolume = calculateVolumeRatchet(baseVolume, currentWeek);
-            const phase = (currentWeek - 1) % 3 === 0 ? 'Baseline' : (currentWeek - 1) % 3 === 1 ? 'Push (+10%)' : 'De-load (-50%)';
             const todayWorkout = SCHEDULE[currentDayIndex];
+            const activeVolume = calculateVolumeRatchet(todayWorkout.baseVol, currentWeek);
+            const phase = (currentWeek - 1) % 3 === 0 ? 'Baseline' : (currentWeek - 1) % 3 === 1 ? 'Push (+10%)' : 'De-load (-50%)';
             const todayKey = `w${currentWeek}-d${currentDayIndex}`;
             const isCompleted = !!completedDays[todayKey];
             const currentRecovery = dailyRecovery[todayKey] || null;
 
-            // Derived Data: Tomorrow's Forecast
             const tomorrowIndex = (currentDayIndex + 1) % 7;
             const tomorrowWeek = currentDayIndex === 6 ? currentWeek + 1 : currentWeek;
             const tomorrowWorkout = SCHEDULE[tomorrowIndex];
-            const tomorrowVolume = calculateVolumeRatchet(baseVolume, Math.min(tomorrowWeek, 12));
+            const tomorrowVolume = calculateVolumeRatchet(tomorrowWorkout.baseVol, Math.min(tomorrowWeek, 12));
 
-            // Derived Data: Streak & Sparkline Engine
             const { streak, sparkline } = useMemo(() => {
                 let currentStreak = 0;
                 let w = currentWeek;
@@ -223,7 +221,7 @@
                                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${checklist[item.id] ? 'bg-cyan-500 border-cyan-500' : 'border-gray-600 group-hover:border-cyan-500'}`}>
                                         {checklist[item.id] && <span className="text-black text-xs font-bold">✓</span>}
                                     </div>
-                                    <input type="checkbox" className="hidden" onChange={() => toggleChecklist(item.id)} />
+                                    <input type="checkbox" className="hidden" checked={checklist[item.id]} onChange={() => toggleChecklist(item.id)} />
                                     <span className={`transition-colors ${checklist[item.id] ? 'text-gray-200' : 'text-gray-500 group-hover:text-gray-300'}`}>{item.label}</span>
                                 </label>
                             ))}
@@ -242,10 +240,12 @@
                         <h3 className={`text-3xl font-bold mb-2 tracking-tight ${todayWorkout.color}`}>{todayWorkout.type}</h3>
                         <p className="text-gray-300 mb-6 font-medium">{todayWorkout.desc}</p>
                         
-                        <div className="bg-black/40 p-4 rounded-xl border border-gray-800/50 inline-block mb-6 shadow-inner">
-                            <span className="text-xs text-gray-500 uppercase block mb-1 font-bold tracking-wider">Target Volume</span>
-                            <span className="text-2xl font-mono text-cyan-400">{Math.round(activeVolume)} <span className="text-sm text-gray-500 uppercase">Mins</span></span>
-                        </div>
+                        {activeVolume > 0 && (
+                            <div className="bg-black/40 p-4 rounded-xl border border-gray-800/50 inline-block mb-6 shadow-inner">
+                                <span className="text-xs text-gray-500 uppercase block mb-1 font-bold tracking-wider">Target Volume</span>
+                                <span className="text-2xl font-mono text-cyan-400">{Math.round(activeVolume)} <span className="text-sm text-gray-500 uppercase">Mins</span></span>
+                            </div>
+                        )}
 
                         {suggestedAdjustment && (
                             <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-400 text-sm font-medium leading-relaxed">
@@ -267,7 +267,6 @@
                         </button>
                     </motion.section>
 
-                    {/* Tomorrow's Forecast (Mental Priming) */}
                     <section className="w-full mt-4 glass-panel rounded-xl p-4 border-dashed border-gray-700/50 opacity-80 hover:opacity-100 transition-opacity">
                         <div className="flex justify-between items-center">
                             <div className="flex-1 pr-4">
@@ -277,7 +276,9 @@
                             </div>
                             <div className="text-right pl-4 border-l border-gray-800/50">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Forecast</span>
-                                <span className="text-sm font-mono text-cyan-500/80">{Math.round(tomorrowVolume)}m</span>
+                                <span className="text-sm font-mono text-cyan-500/80">
+                                    {tomorrowVolume > 0 ? `${Math.round(tomorrowVolume)}m` : 'Rest'}
+                                </span>
                             </div>
                         </div>
                     </section>
