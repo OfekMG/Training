@@ -104,7 +104,28 @@
         };
 
         const App = () => {
-            const [currentWeek, setCurrentWeek] = useLocalStorage('rhr_currentWeek', 1);
+            // Anchor the chronological start point
+            const [appStartDate] = useLocalStorage('rhr_startDate', new Date().toISOString());
+            
+            // Dynamically derive the week based on calendar alignment
+            const currentWeek = useMemo(() => {
+                const start = new Date(appStartDate);
+                const today = new Date();
+                
+                // Align both dates to the Sunday of their respective weeks
+                const startSunday = new Date(start);
+                startSunday.setDate(start.getDate() - start.getDay());
+                
+                const todaySunday = new Date(today);
+                todaySunday.setDate(today.getDate() - today.getDay());
+                
+                // Calculate the mathematical difference in weeks
+                const diffInMs = todaySunday.setHours(0,0,0,0) - startSunday.setHours(0,0,0,0);
+                const diffInWeeks = Math.round(diffInMs / (1000 * 60 * 60 * 24 * 7));
+                
+                return Math.max(1, diffInWeeks + 1); 
+            }, [appStartDate]);
+
             const [completedDays, setCompletedDays] = useLocalStorage('rhr_completedDays', {});
             const [dailyRecovery, setDailyRecovery] = useLocalStorage('rhr_dailyRecovery', {});
             const [checklist, setChecklist] = useLocalStorage('rhr_checklist', { sunlight: false, water: false, fast: false, nasal: false });
