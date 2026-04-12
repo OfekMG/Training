@@ -117,23 +117,28 @@
             { day: 'Sat', type: 'Neural Rest', desc: 'Zero structured load', color: 'text-gray-400', baseVol: 0, maxVol: 0 }
         ];
 
-        // Dynamic Readiness Multiplier based on HRV Z-Score approximation
+        // Dynamic Readiness Multiplier based on Percentage Change (Coefficient of Variation)
         const calculateDailyProtocol = (workout, currentHRV, baseHRV) => {
             if (workout.baseVol === 0) return { volume: 0, state: 'Neural Rest', stateColor: 'text-gray-400', instruction: workout.desc };
 
-            const deviation = currentHRV - baseHRV;
-            const zScoreApprox = deviation / 10; // Assuming an estimated population sigma of 10 ms for RMSSD
+            // Calculate how far off baseline you are as a percentage
+            const percentChange = (currentHRV - baseHRV) / baseHRV; 
             
-            if (zScoreApprox >= 0.5) {
+            // Thresholds: +/- 8% is generally considered normal daily fluctuation for HRV
+            if (percentChange >= 0.08) {
                 return { 
                     volume: workout.maxVol, 
                     state: 'Hyper-Ready', 
                     stateColor: 'text-green-400',
                     instruction: `${workout.desc}. System optimized. End with 3x30s maximum output bursts.` 
                 };
-            } else if (zScoreApprox <= -0.5) {
+            } else if (percentChange <= -0.08) {
+                // Smooth scaling: Instead of a flat 40% cut, scale it based on how far below baseline you are
+                // Caps the penalty so you never drop below 50% of your base volume
+                const penaltyMultiplier = Math.max(0.5, 1 + percentChange); 
+                
                 return { 
-                    volume: Math.round(workout.baseVol * 0.6), 
+                    volume: Math.round(workout.baseVol * penaltyMultiplier), 
                     state: 'Under-Recovered', 
                     stateColor: 'text-red-500',
                     instruction: `High sympathetic drive detected. Cap effort at Zone 2. Focus on structural recovery.` 
@@ -153,7 +158,7 @@
             const [completedDays, setCompletedDays] = useLocalStorage('rhr_completedDays', {});
             const [checklist, setChecklist] = useLocalStorage('rhr_checklist', { sunlight: false, water: false, fast: false, nasal: false });
             
-            // New HRV Biometrics State
+            // HRV Biometrics State
             const [baseHRV, setBaseHRV] = useLocalStorage('rhr_baseHRV', 65);
             const [dailyHRV, setDailyHRV] = useLocalStorage('rhr_dailyHRV', 65);
             
@@ -177,7 +182,7 @@
             const tomorrowWorkout = SCHEDULE[tomorrowIndex];
 
             const streak = useMemo(() => {
-                return Object.keys(completedDays).length; // Simplified streak for dynamic protocol
+                return Object.keys(completedDays).length;
             }, [completedDays]);
 
             const handleComplete = () => {
