@@ -168,7 +168,6 @@
 
         const App = () => {
             const [appStartDate] = useLocalStorage('rhr_startDate', new Date().toISOString());
-            const [checklist, setChecklist] = useLocalStorage('rhr_checklist', { sunlight: false, water: false, fast: false, nasal: false });
             const [baseHRV, setBaseHRV] = useLocalStorage('rhr_baseHRV', 65);
             const [dailyHRV, setDailyHRV] = useLocalStorage('rhr_dailyHRV', 65);
             const [trainingMode, setTrainingMode] = useLocalStorage('rhr_trainingMode', 'Balanced');
@@ -188,8 +187,6 @@
             
             const tomorrowIndex = (currentDayIndex + 1) % 7;
             const tomorrowWorkout = activeSchedule[tomorrowIndex];
-
-            const toggleChecklist = (key) => setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
 
             return (
                 <div className="min-h-screen p-4 md:p-8 flex flex-col items-center max-w-lg mx-auto">
@@ -262,26 +259,6 @@
                                     onChange={(e) => setDailyHRV(Number(e.target.value))}
                                 />
                             </div>
-                        </div>
-                    </section>
-
-                    <section className="w-full glass-panel rounded-xl p-5 mb-6">
-                        <h2 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest border-b border-gray-800/50 pb-2">Optimization Targets</h2>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            {[
-                                { id: 'sunlight', label: 'Morning Sunlight 15m' },
-                                { id: 'water', label: '3L Hydration' },
-                                { id: 'fast', label: '4hr Pre-Sleep Fast' },
-                                { id: 'nasal', label: 'Nasal Breathing Only' }
-                            ].map(item => (
-                                <label key={item.id} className="flex items-center space-x-3 cursor-pointer group">
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${checklist[item.id] ? 'bg-cyan-500 border-cyan-500' : 'border-gray-600 group-hover:border-cyan-500'}`}>
-                                        {checklist[item.id] && <span className="text-black text-xs font-bold">✓</span>}
-                                    </div>
-                                    <input type="checkbox" className="hidden" checked={checklist[item.id]} onChange={() => toggleChecklist(item.id)} />
-                                    <span className={`transition-colors ${checklist[item.id] ? 'text-gray-200' : 'text-gray-500 group-hover:text-gray-300'}`}>{item.label}</span>
-                                </label>
-                            ))}
                         </div>
                     </section>
 
