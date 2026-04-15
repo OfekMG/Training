@@ -11,8 +11,8 @@
             theme: {
                 extend: {
                     colors: {
-                        background: '#09090b', /* Zinc 950 */
-                        surface: 'rgba(24, 24, 27, 0.6)', /* Zinc 900 with opacity */
+                        background: '#09090b', 
+                        surface: 'rgba(24, 24, 27, 0.6)', 
                         surfaceBorder: 'rgba(255, 255, 255, 0.1)',
                     },
                     fontFamily: {
@@ -45,7 +45,6 @@
         
         ::-webkit-scrollbar { display: none; }
         
-        /* Premium sliders - balanced between minimal and stylized */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
@@ -189,8 +188,8 @@
         };
 
         const App = () => {
-            const [baseHRV, setBaseHRV] = useLocalStorage('rhr_baseHRV', 65);
-            const [dailyHRV, setDailyHRV] = useLocalStorage('rhr_dailyHRV', 65);
+            const [baseHRV, setBaseHRV] = useLocalStorage('rhr_baseHRV', 117);
+            const [dailyHRV, setDailyHRV] = useLocalStorage('rhr_dailyHRV', 127);
             const [trainingMode, setTrainingMode] = useLocalStorage('rhr_trainingMode', 'Balanced');
             
             const currentDayIndex = new Date().getDay();
@@ -212,17 +211,17 @@
                     {/* Header */}
                     <header className="w-full mb-10 mt-4 flex justify-between items-center">
                         <div>
-                            <h1 className="text-xl font-semibold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 to-zinc-400">
+                            <h1 className="text-xl font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 to-zinc-400">
                                 Neuro-RHR
                             </h1>
-                            <div className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest mt-0.5">Protocol Dashboard</div>
+                            <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mt-0.5">Protocol Dashboard</div>
                         </div>
                         
                         <div className="relative group">
                             <select 
                                 value={trainingMode} 
                                 onChange={(e) => setTrainingMode(e.target.value)}
-                                className="appearance-none bg-zinc-900/50 border border-zinc-800 text-zinc-300 py-2 pl-4 pr-9 rounded-lg text-xs font-medium focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition-all cursor-pointer hover:bg-zinc-800/50"
+                                className="appearance-none bg-zinc-900/50 border border-zinc-800 text-zinc-300 py-2 pl-4 pr-9 rounded-lg text-xs font-semibold focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 transition-all cursor-pointer hover:bg-zinc-800/50"
                             >
                                 <option value="Balanced">Balanced Base</option>
                                 <option value="Aerobic Focus">Aerobic Block</option>
@@ -236,19 +235,19 @@
                         </div>
                     </header>
 
-                    {/* Readiness Panel */}
+                    {/* Readiness Panel - THICKENED FONTS */}
                     <section className="w-full glass-card rounded-2xl p-6 mb-6">
                         <div className="flex justify-between items-end mb-8">
                             <div>
-                                <h2 className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest mb-1.5">System State</h2>
-                                <div className={`text-base font-semibold tracking-wide flex items-center gap-2 ${activeProtocol.textClass}`}>
-                                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: activeProtocol.colorHex, boxShadow: `0 0 8px ${activeProtocol.colorHex}` }}></div>
+                                <h2 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">System State</h2>
+                                <div className={`text-lg font-bold tracking-wide flex items-center gap-2 ${activeProtocol.textClass}`}>
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: activeProtocol.colorHex, boxShadow: `0 0 10px ${activeProtocol.colorHex}` }}></div>
                                     {activeProtocol.state}
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest mb-1.5">Variance</div>
-                                <div className="text-lg font-mono text-zinc-100">
+                                <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1.5">Variance</div>
+                                <div className="text-xl font-mono font-bold text-zinc-100">
                                     {((dailyHRV - baseHRV) / baseHRV * 100) > 0 ? '+' : ''}{((dailyHRV - baseHRV) / baseHRV * 100).toFixed(1)}%
                                 </div>
                             </div>
@@ -256,9 +255,9 @@
                         
                         <div className="space-y-7">
                             <div className="relative">
-                                <div className="flex justify-between text-xs mb-2">
-                                    <span className="text-zinc-400 font-medium">Baseline HRV (14d)</span>
-                                    <span className="font-mono text-zinc-300">{baseHRV} <span className="text-[10px] text-zinc-600">ms</span></span>
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span className="text-zinc-400 font-semibold">Baseline HRV (14d)</span>
+                                    <span className="font-mono font-bold text-zinc-300">{baseHRV} <span className="text-xs text-zinc-600 font-semibold">ms</span></span>
                                 </div>
                                 <input 
                                     type="range" min="30" max="150" value={baseHRV} 
@@ -267,9 +266,9 @@
                             </div>
                             
                             <div className="relative">
-                                <div className="flex justify-between text-xs mb-2">
-                                    <span className="text-zinc-200 font-medium">Morning RMSSD</span>
-                                    <span className={`font-mono font-medium ${activeProtocol.textClass}`}>{dailyHRV} <span className="text-[10px] opacity-50">ms</span></span>
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span className="text-zinc-200 font-semibold">Morning RMSSD</span>
+                                    <span className={`font-mono font-bold ${activeProtocol.textClass}`}>{dailyHRV} <span className="text-xs opacity-50 font-semibold">ms</span></span>
                                 </div>
                                 <input 
                                     type="range" min="30" max="150" value={dailyHRV} 
@@ -294,27 +293,27 @@
                             }}
                         >
                             <div>
-                                <h2 className="text-[11px] font-medium text-zinc-400 uppercase tracking-widest mb-3">Today • {todayWorkout.day}</h2>
-                                <h3 className="text-2xl font-semibold text-zinc-100 mb-3 tracking-tight">
+                                <h2 className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Today • {todayWorkout.day}</h2>
+                                <h3 className="text-2xl font-bold text-zinc-100 mb-3 tracking-tight">
                                     {todayWorkout.type}
                                 </h3>
-                                <p className="text-zinc-400 text-sm leading-relaxed max-w-[95%]">
+                                <p className="text-zinc-400 text-sm font-medium leading-relaxed max-w-[95%]">
                                     {activeProtocol.instruction}
                                 </p>
                             </div>
                             
                             <div className="mt-8 pt-5 border-t border-zinc-800/50 flex items-end justify-between">
                                 <div>
-                                    <span className="text-[10px] text-zinc-500 uppercase font-medium tracking-widest block mb-1">Target Volume</span>
+                                    <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest block mb-1">Target Volume</span>
                                     {activeProtocol.volume > 0 ? (
                                         <div className="flex items-baseline space-x-1.5">
-                                            <span className={`text-4xl font-mono font-semibold tracking-tight ${activeProtocol.textClass}`}>
+                                            <span className={`text-4xl font-mono font-bold tracking-tight ${activeProtocol.textClass}`}>
                                                 {activeProtocol.volume}
                                             </span>
-                                            <span className="text-xs text-zinc-500 uppercase font-medium">Min</span>
+                                            <span className="text-xs text-zinc-500 uppercase font-bold">Min</span>
                                         </div>
                                     ) : (
-                                        <span className={`text-2xl font-mono font-medium tracking-tight ${activeProtocol.textClass}`}>
+                                        <span className={`text-2xl font-mono font-bold tracking-tight ${activeProtocol.textClass}`}>
                                             REST
                                         </span>
                                     )}
@@ -333,12 +332,12 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <h4 className="text-[10px] text-zinc-500 uppercase tracking-widest font-medium mb-0.5">Tomorrow</h4>
-                                    <span className="text-sm font-medium text-zinc-300">{tomorrowWorkout.type}</span>
+                                    <h4 className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-0.5">Tomorrow</h4>
+                                    <span className="text-sm font-bold text-zinc-300">{tomorrowWorkout.type}</span>
                                 </div>
                             </div>
                             <div className="text-right">
-                                <span className="text-sm font-mono text-zinc-400">
+                                <span className="text-sm font-mono font-bold text-zinc-400">
                                     {tomorrowWorkout.baseVol > 0 ? `${tomorrowWorkout.baseVol}m` : 'REST'}
                                 </span>
                             </div>
