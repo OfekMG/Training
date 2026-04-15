@@ -1,347 +1,679 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neuro-RHR Optimization Protocol v3.0</title>
-    <meta name="theme-color" content="#050507">
+
+    <title>Neuro-RHR Optimization Protocol</title>
+
+    <meta name="theme-color" content="#0B0C10">
+
     <script src="https://cdn.tailwindcss.com"></script>
+
     <script>
+
         tailwind.config = {
+
             theme: {
+
                 extend: {
+
                     colors: {
+
                         obsidian: '#050507',
-                        cyan: { 400: '#45F3FF', 500: '#00E5FF', 900: '#003333' },
-                        red: { 400: '#FF4545', 500: '#FF2A2A', 900: '#330000' },
-                        green: { 400: '#39FF14', 500: '#32E512', 900: '#0A3300' },
-                        purple: { 400: '#B026FF', 900: '#2A0040' }
-                    },
-                    fontFamily: {
-                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'],
-                        sans: ['-apple-system', 'BlinkMacSystemFont', "Segoe UI", 'Roboto', 'Helvetica', 'Arial', 'sans-serif']
+
+                        glass: 'rgba(20, 25, 30, 0.45)',
+
+                        cyan: { 400: '#45F3FF', 500: '#00E5FF' },
+
+                        red: { 500: '#FF2A2A' },
+
+                        green: { 400: '#39FF14' },
+
+                        yellow: { 400: '#FFEA00' },
+
+                        purple: { 400: '#B026FF' }
+
                     }
+
                 }
+
             }
+
         }
+
     </script>
+
+
+
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
 
+
+
     <style>
+
         body { 
+
             background-color: #050507; 
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(0, 229, 255, 0.03) 0%, transparent 50%),
-                radial-gradient(circle at 85% 30%, rgba(176, 38, 255, 0.03) 0%, transparent 50%);
+
+            background-image: radial-gradient(circle at 50% 0%, #111822 0%, #050507 70%);
+
             color: #fff; 
+
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+
             min-height: 100vh;
+
         }
+
         .glass-panel { 
-            background: rgba(15, 20, 25, 0.6); 
-            backdrop-filter: blur(20px); 
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05); 
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
+
+            background: rgba(15, 20, 25, 0.4); 
+
+            backdrop-filter: blur(16px); 
+
+            -webkit-backdrop-filter: blur(16px);
+
+            border: 1px solid rgba(0, 229, 255, 0.08); 
+
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+
         }
+
         ::-webkit-scrollbar { display: none; }
+
         
+
         input[type=range] {
+
             -webkit-appearance: none;
+
             width: 100%;
+
             background: transparent;
-            margin: 10px 0;
+
         }
+
         input[type=range]::-webkit-slider-thumb {
+
             -webkit-appearance: none;
-            height: 20px;
-            width: 8px;
-            border-radius: 2px;
+
+            height: 16px;
+
+            width: 16px;
+
+            border-radius: 50%;
+
             background: #00E5FF;
+
             cursor: pointer;
-            margin-top: -8px;
-            box-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+
+            margin-top: -6px;
+
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+
         }
-        input[type=range].red-slider::-webkit-slider-thumb {
-            background: #FF2A2A;
-            box-shadow: 0 0 12px rgba(255, 42, 42, 0.6);
-        }
+
         input[type=range]::-webkit-slider-runnable-track {
+
             width: 100%;
+
             height: 4px;
+
             cursor: pointer;
-            background: rgba(255, 255, 255, 0.1);
+
+            background: #1f2937;
+
             border-radius: 2px;
+
         }
+
     </style>
+
 </head>
+
 <body>
+
     <div id="root"></div>
 
+
+
     <script type="text/babel">
-        const { useState, useMemo } = React;
+
+        const { useState, useEffect, useMemo } = React;
+
         const { motion } = window.Motion;
 
+
+
         const useLocalStorage = (key, initialValue) => {
+
             const [storedValue, setStoredValue] = useState(() => {
+
                 try {
+
                     const item = window.localStorage.getItem(key);
+
                     return item ? JSON.parse(item) : initialValue;
+
                 } catch (error) {
+
                     console.error(error);
+
                     return initialValue;
+
                 }
+
             });
 
+
+
             const setValue = (value) => {
+
                 try {
+
                     const valueToStore = value instanceof Function ? value(storedValue) : value;
+
                     setStoredValue(valueToStore);
+
                     window.localStorage.setItem(key, JSON.stringify(valueToStore));
+
                 } catch (error) {
+
                     console.error(error);
+
                 }
+
             };
+
             return [storedValue, setValue];
+
         };
 
-        const calculateAverages = (historyData) => {
-            if (!historyData || historyData.length === 0) return { hrv: 65, rhr: 50 };
-            const recent = historyData.slice(-7); 
-            const hrvSum = recent.reduce((sum, entry) => sum + entry.hrv, 0);
-            const rhrSum = recent.reduce((sum, entry) => sum + entry.rhr, 0);
-            return {
-                hrv: Math.round(hrvSum / recent.length),
-                rhr: Math.round(rhrSum / recent.length)
-            };
-        };
 
-        const calculateReadiness = (dailyHRV, dailyRHR, baseHRV, baseRHR) => {
-            const hrvDiff = (dailyHRV - baseHRV) / baseHRV;
-            let hrvScore = 50 + (hrvDiff * 100 * 2.5); 
-            
-            const rhrDiff = (baseRHR - dailyRHR) / baseRHR; 
-            let rhrScore = 50 + (rhrDiff * 100 * 4);
 
-            let score = Math.round((hrvScore * 0.6) + (rhrScore * 0.4));
-            score = Math.max(0, Math.min(100, score));
+        const getScheduleForMode = (mode, currentWeek) => {
 
-            if (score >= 75) return { score, state: 'Hyper-Ready', color: 'text-green-400', bg: 'bg-green-900/20', border: 'border-green-500/30' };
-            if (score >= 40) return { score, state: 'Baseline Capacity', color: 'text-cyan-400', bg: 'bg-cyan-900/20', border: 'border-cyan-500/30' };
-            return { score, state: 'Under-Recovered', color: 'text-red-500', bg: 'bg-red-900/20', border: 'border-red-500/30' };
-        };
+            const isEnduranceWeek = currentWeek % 2 === 0;
 
-        const getScheduleForMode = (mode) => {
+
+
             const baseSchedules = {
+
                 'Balanced': [
-                    { day: 'Sun', type: 'Zone 2 Base', desc: 'Strict Nasal Breathing', color: 'text-cyan-400', baseVol: 45 },
-                    { day: 'Mon', type: 'Anaerobic Capacity', desc: '4x4m Intervals (Z5) with 3m rest', color: 'text-red-500', baseVol: 30 },
-                    { day: 'Tue', type: 'Zone 2 Flush', desc: 'Light spin/jog', color: 'text-cyan-400', baseVol: 40 },
-                    { day: 'Wed', type: 'Strength (Lower)', desc: 'Heavy structural loading', color: 'text-purple-400', baseVol: 45 },
-                    { day: 'Thu', type: 'Strength (Upper)', desc: 'Upper mechanics', color: 'text-purple-400', baseVol: 45 },
-                    { day: 'Fri', type: 'HIIT / Sprint', desc: 'Max output, full recovery', color: 'text-red-500', baseVol: 20 },
-                    { day: 'Sat', type: 'Neural Rest', desc: 'Zero structured load', color: 'text-gray-400', baseVol: 0 }
+
+                    { day: 'Sun', type: isEnduranceWeek ? 'Endurance Engine' : 'Zone 2 Base', desc: isEnduranceWeek ? 'Extended low-intensity volume for stroke volume expansion.' : 'Strict Nasal Breathing', color: 'text-cyan-400', baseVol: isEnduranceWeek ? 90 : 45, maxVol: isEnduranceWeek ? 105 : 50 },
+
+                    { day: 'Mon', type: 'Anaerobic Capacity', desc: '4x4m Intervals (Z5) with 3m rest', color: 'text-red-500', baseVol: 30, maxVol: 35 },
+
+                    { day: 'Tue', type: 'Zone 2 Flush', desc: 'Light spin/jog', color: 'text-cyan-400', baseVol: 40, maxVol: 45 },
+
+                    { day: 'Wed', type: 'Strength (Lower)', desc: 'Heavy structural loading', color: 'text-purple-400', baseVol: 45, maxVol: 45 },
+
+                    { day: 'Thu', type: 'Strength (Upper)', desc: 'Upper mechanics', color: 'text-purple-400', baseVol: 45, maxVol: 45 },
+
+                    { day: 'Fri', type: 'HIIT / Sprint', desc: 'Max output, full recovery', color: 'text-red-500', baseVol: 20, maxVol: 20 },
+
+                    { day: 'Sat', type: 'Neural Rest', desc: 'Zero structured load', color: 'text-gray-400', baseVol: 0, maxVol: 0 }
+
                 ],
+
                 'Aerobic Focus': [
-                    { day: 'Sun', type: 'Endurance Engine', desc: 'Long steady state. Target cardiac hypertrophy.', color: 'text-cyan-400', baseVol: 90 },
-                    { day: 'Mon', type: 'Anaerobic Capacity', desc: '4x4m Intervals (Z5) with 3m rest', color: 'text-red-500', baseVol: 35 },
-                    { day: 'Tue', type: 'Zone 2 Base', desc: 'Strict Nasal Breathing', color: 'text-cyan-400', baseVol: 60 },
-                    { day: 'Wed', type: 'Strength Maintenance', desc: 'Full body mobility and compound maintenance', color: 'text-purple-400', baseVol: 30 },
-                    { day: 'Thu', type: 'Zone 2 Flush', desc: 'Light spin/jog', color: 'text-cyan-400', baseVol: 45 },
-                    { day: 'Fri', type: 'HIIT / Sprint', desc: 'Max output, full recovery', color: 'text-red-500', baseVol: 20 },
-                    { day: 'Sat', type: 'Neural Rest', desc: 'Zero structured load', color: 'text-gray-400', baseVol: 0 }
+
+                    { day: 'Sun', type: 'Endurance Engine', desc: 'Long steady state. Target cardiac hypertrophy.', color: 'text-cyan-400', baseVol: 90, maxVol: 120 },
+
+                    { day: 'Mon', type: 'Anaerobic Capacity', desc: '4x4m Intervals (Z5) with 3m rest', color: 'text-red-500', baseVol: 35, maxVol: 40 },
+
+                    { day: 'Tue', type: 'Zone 2 Base', desc: 'Strict Nasal Breathing', color: 'text-cyan-400', baseVol: 60, maxVol: 75 },
+
+                    { day: 'Wed', type: 'Strength Maintenance', desc: 'Full body mobility and compound maintenance', color: 'text-purple-400', baseVol: 30, maxVol: 30 },
+
+                    { day: 'Thu', type: 'Zone 2 Flush', desc: 'Light spin/jog', color: 'text-cyan-400', baseVol: 45, maxVol: 50 },
+
+                    { day: 'Fri', type: 'HIIT / Sprint', desc: 'Max output, full recovery', color: 'text-red-500', baseVol: 20, maxVol: 20 },
+
+                    { day: 'Sat', type: 'Neural Rest', desc: 'Zero structured load', color: 'text-gray-400', baseVol: 0, maxVol: 0 }
+
                 ],
+
                 'Strength Focus': [
-                    { day: 'Sun', type: 'Zone 2 Base', desc: 'Strict Nasal Breathing. Active recovery.', color: 'text-cyan-400', baseVol: 45 },
-                    { day: 'Mon', type: 'Strength (Lower Vol)', desc: 'Squat/Hinge primary focus. Hypertrophy ranges.', color: 'text-purple-400', baseVol: 60 },
-                    { day: 'Tue', type: 'Zone 2 Flush', desc: 'Light active recovery to clear metabolites', color: 'text-cyan-400', baseVol: 30 },
-                    { day: 'Wed', type: 'Strength (Upper Vol)', desc: 'Push/Pull primary focus. Hypertrophy ranges.', color: 'text-purple-400', baseVol: 60 },
-                    { day: 'Thu', type: 'Anaerobic Maintenance', desc: 'Short sprint intervals', color: 'text-red-500', baseVol: 20 },
-                    { day: 'Fri', type: 'Power / Full Body', desc: 'Explosive movements, plyometrics', color: 'text-purple-400', baseVol: 45 },
-                    { day: 'Sat', type: 'Neural Rest', desc: 'Zero structured load', color: 'text-gray-400', baseVol: 0 }
+
+                    { day: 'Sun', type: 'Zone 2 Base', desc: 'Strict Nasal Breathing. Active recovery.', color: 'text-cyan-400', baseVol: 45, maxVol: 50 },
+
+                    { day: 'Mon', type: 'Strength (Lower Vol)', desc: 'Squat/Hinge primary focus. Hypertrophy ranges.', color: 'text-purple-400', baseVol: 60, maxVol: 70 },
+
+                    { day: 'Tue', type: 'Zone 2 Flush', desc: 'Light active recovery to clear metabolites', color: 'text-cyan-400', baseVol: 30, maxVol: 30 },
+
+                    { day: 'Wed', type: 'Strength (Upper Vol)', desc: 'Push/Pull primary focus. Hypertrophy ranges.', color: 'text-purple-400', baseVol: 60, maxVol: 70 },
+
+                    { day: 'Thu', type: 'Anaerobic Maintenance', desc: 'Short sprint intervals', color: 'text-red-500', baseVol: 20, maxVol: 25 },
+
+                    { day: 'Fri', type: 'Power / Full Body', desc: 'Explosive movements, plyometrics', color: 'text-purple-400', baseVol: 45, maxVol: 50 },
+
+                    { day: 'Sat', type: 'Neural Rest', desc: 'Zero structured load', color: 'text-gray-400', baseVol: 0, maxVol: 0 }
+
                 ]
+
             };
+
+
+
             return baseSchedules[mode] || baseSchedules['Balanced'];
+
         };
 
-        const TrendChart = ({ data, dataKey, strokeColor }) => {
-            if (data.length < 2) return <div className="h-16 flex items-center justify-center text-xs text-gray-600">Need more data</div>;
+
+
+        const calculateDailyProtocol = (workout, currentHRV, baseHRV) => {
+
+            if (workout.baseVol === 0) return { volume: 0, state: 'Neural Rest', stateColor: 'text-gray-400', instruction: workout.desc };
+
+
+
+            const percentChange = (currentHRV - baseHRV) / baseHRV; 
+
             
-            const max = Math.max(...data.map(d => d[dataKey]));
-            const min = Math.min(...data.map(d => d[dataKey]));
-            const range = max - min || 1;
-            const width = 100;
-            const height = 40;
 
-            const points = data.map((d, i) => {
-                const x = (i / (data.length - 1)) * width;
-                const y = height - ((d[dataKey] - min) / range) * height;
-                return `${x},${y}`;
-            }).join(' ');
+            if (percentChange >= 0.08) {
 
-            return (
-                <svg viewBox={`0 -5 100 50`} className="w-full h-16 overflow-visible">
-                    <polyline fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" points={points} />
-                    {data.map((d, i) => {
-                        const x = (i / (data.length - 1)) * width;
-                        const y = height - ((d[dataKey] - min) / range) * height;
-                        return <circle key={i} cx={x} cy={y} r="2" fill="#050507" stroke={strokeColor} strokeWidth="1.5" />
-                    })}
-                </svg>
-            );
+                return { 
+
+                    volume: workout.maxVol, 
+
+                    state: 'Hyper-Ready', 
+
+                    stateColor: 'text-green-400',
+
+                    instruction: `${workout.desc}. System optimized. End with maximum output bursts.` 
+
+                };
+
+            } else if (percentChange <= -0.08) {
+
+                const penaltyMultiplier = Math.max(0.5, 1 + percentChange); 
+
+                return { 
+
+                    volume: Math.round(workout.baseVol * penaltyMultiplier), 
+
+                    state: 'Under-Recovered', 
+
+                    stateColor: 'text-red-500',
+
+                    instruction: `High sympathetic drive detected. Cap effort intensity. Focus on structural recovery.` 
+
+                };
+
+            }
+
+            
+
+            return { 
+
+                volume: workout.baseVol, 
+
+                state: 'Baseline Capacity', 
+
+                stateColor: 'text-yellow-400',
+
+                instruction: workout.desc 
+
+            };
+
         };
+
+
 
         const App = () => {
-            const [history, setHistory] = useLocalStorage('rhr_history', []);
+
+            const [appStartDate] = useLocalStorage('rhr_startDate', new Date().toISOString());
+
+            const [checklist, setChecklist] = useLocalStorage('rhr_checklist', { sunlight: false, water: false, fast: false, nasal: false });
+
+            const [baseHRV, setBaseHRV] = useLocalStorage('rhr_baseHRV', 65);
+
+            const [dailyHRV, setDailyHRV] = useLocalStorage('rhr_dailyHRV', 65);
+
             const [trainingMode, setTrainingMode] = useLocalStorage('rhr_trainingMode', 'Balanced');
-            const [inputHRV, setInputHRV] = useState(65);
-            const [inputRHR, setInputRHR] = useState(50);
+
             
-            const currentDayIndex = new Date().getDay(); // 0 = Sun, 3 = Wed
-            
-            const activeSchedule = getScheduleForMode(trainingMode);
+
+            const [currentDayIndex, setCurrentDayIndex] = useState(new Date().getDay());
+
+
+
+            const currentWeek = useMemo(() => {
+
+                const start = new Date(appStartDate);
+
+                const today = new Date();
+
+                const diffInMs = today - start;
+
+                return Math.max(1, Math.floor(diffInMs / (1000 * 60 * 60 * 24 * 7)) + 1); 
+
+            }, [appStartDate]);
+
+
+
+            const activeSchedule = getScheduleForMode(trainingMode, currentWeek);
+
             const todayWorkout = activeSchedule[currentDayIndex];
 
-            const rollingAverages = useMemo(() => calculateAverages(history), [history]);
-            const readiness = useMemo(() => calculateReadiness(inputHRV, inputRHR, rollingAverages.hrv, rollingAverages.rhr), [inputHRV, inputRHR, rollingAverages]);
+            const activeProtocol = calculateDailyProtocol(todayWorkout, dailyHRV, baseHRV);
 
-            const handleSaveToday = () => {
-                const todayStr = new Date().toISOString().split('T')[0];
-                const newEntry = { date: todayStr, hrv: inputHRV, rhr: inputRHR, score: readiness.score };
-                
-                setHistory(prev => {
-                    const filtered = prev.filter(entry => entry.date !== todayStr);
-                    return [...filtered, newEntry].sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-14);
-                });
-            };
+            
+
+            const tomorrowIndex = (currentDayIndex + 1) % 7;
+
+            const tomorrowWorkout = activeSchedule[tomorrowIndex];
+
+
+
+            const toggleChecklist = (key) => setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+
+
 
             return (
-                <div className="min-h-screen p-4 md:p-6 flex flex-col items-center max-w-xl mx-auto space-y-6 pb-20">
+
+                <div className="min-h-screen p-4 md:p-8 flex flex-col items-center max-w-lg mx-auto">
+
                     
-                    <header className="w-full mt-4">
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h1 className="text-2xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 uppercase">
-                                    Neuro-RHR
-                                </h1>
-                                <p className="text-[10px] text-cyan-500/70 uppercase tracking-widest font-mono mt-1">Autonomic Operating System</p>
+
+                    <header className="w-full mb-6 mt-4">
+
+                        <div className="flex justify-between items-center mb-2">
+
+                            <h1 className="text-2xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase">
+
+                                Neuro-RHR
+
+                            </h1>
+
+                            <div className="relative inline-block">
+
+                                <select 
+
+                                    value={trainingMode} 
+
+                                    onChange={(e) => setTrainingMode(e.target.value)}
+
+                                    className="appearance-none bg-[#0a0f16] border border-cyan-500/30 text-cyan-400 py-2 pl-4 pr-10 rounded-lg text-sm font-bold uppercase tracking-wider focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.15)] cursor-pointer transition-all"
+
+                                >
+
+                                    <option value="Balanced">Balanced Base</option>
+
+                                    <option value="Aerobic Focus">Aerobic Block</option>
+
+                                    <option value="Strength Focus">Strength Block</option>
+
+                                </select>
+
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-cyan-400">
+
+                                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+
+                                        <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
+
+                                    </svg>
+
+                                </div>
+
                             </div>
-                            <select 
-                                value={trainingMode} 
-                                onChange={(e) => setTrainingMode(e.target.value)}
-                                className="appearance-none bg-[#0a0f16] border border-cyan-500/30 text-cyan-400 py-1.5 pl-3 pr-8 rounded text-[10px] font-bold uppercase tracking-wider focus:outline-none focus:border-cyan-400 shadow-[0_0_15px_rgba(0,229,255,0.15)] cursor-pointer"
-                            >
-                                <option value="Balanced">Balanced</option>
-                                <option value="Aerobic Focus">Aerobic</option>
-                                <option value="Strength Focus">Strength</option>
-                            </select>
+
                         </div>
+
                     </header>
 
-                    {/* Today's Workout Focus */}
-                    <section className="w-full glass-panel rounded-2xl p-5 border-l-4 border-l-purple-500 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-3 opacity-[0.03] text-6xl font-black pointer-events-none">
-                            {todayWorkout.day}
+
+
+                    {/* Week & Cycle Indicator */}
+
+                    <div className="w-full flex justify-center mb-6">
+
+                        <div className="bg-gray-900/50 border border-gray-700/50 rounded-full px-4 py-1.5 flex items-center space-x-2 shadow-sm">
+
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+
+                                Week {currentWeek}
+
+                            </span>
+
+                            <span className="text-gray-600">|</span>
+
+                            <span className={`text-xs font-bold uppercase tracking-widest ${currentWeek % 2 === 0 ? 'text-purple-400' : 'text-cyan-400'}`}>
+
+                                {currentWeek % 2 === 0 ? 'Endurance (Long Run) Cycle' : 'Standard Base Cycle'}
+
+                            </span>
+
                         </div>
-                        <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Session Target</h2>
-                        <h3 className={`text-2xl font-bold tracking-tight ${todayWorkout.color} mb-2`}>{todayWorkout.type}</h3>
-                        <div className="bg-black/30 p-3 rounded-lg border border-gray-800/50 flex justify-between items-center">
-                            <span className="text-sm text-gray-300">{todayWorkout.desc}</span>
-                            {todayWorkout.baseVol > 0 && (
-                                <span className="font-mono text-xl text-white ml-4">{todayWorkout.baseVol}<span className="text-xs text-gray-500">m</span></span>
-                            )}
+
+                    </div>
+
+
+
+                    {/* Autonomic Nervous System (ANS) Control Panel */}
+
+                    <section className="w-full glass-panel rounded-xl p-5 mb-6">
+
+                        <div className="flex justify-between items-center border-b border-gray-800/50 pb-2 mb-4">
+
+                            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">ANS Readiness Control</h2>
+
+                            <span className={`text-xs font-bold uppercase tracking-wider ${activeProtocol.stateColor}`}>
+
+                                {activeProtocol.state}
+
+                            </span>
+
                         </div>
+
+                        
+
+                        <div className="space-y-5">
+
+                            <div>
+
+                                <div className="flex justify-between text-xs mb-2">
+
+                                    <span className="text-gray-400">Baseline HRV (14-Day Avg)</span>
+
+                                    <span className="font-mono text-cyan-400">{baseHRV} ms</span>
+
+                                </div>
+
+                                <input 
+
+                                    type="range" min="30" max="150" value={baseHRV} 
+
+                                    onChange={(e) => setBaseHRV(Number(e.target.value))}
+
+                                />
+
+                            </div>
+
+                            
+
+                            <div>
+
+                                <div className="flex justify-between text-xs mb-2">
+
+                                    <span className="text-white font-bold">Daily Morning HRV (RMSSD)</span>
+
+                                    <span className={`font-mono font-bold ${activeProtocol.stateColor}`}>{dailyHRV} ms</span>
+
+                                </div>
+
+                                <input 
+
+                                    type="range" min="30" max="150" value={dailyHRV} 
+
+                                    onChange={(e) => setDailyHRV(Number(e.target.value))}
+
+                                />
+
+                            </div>
+
+                        </div>
+
                     </section>
 
+
+
+                    <section className="w-full glass-panel rounded-xl p-5 mb-6">
+
+                        <h2 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest border-b border-gray-800/50 pb-2">Optimization Targets</h2>
+
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+
+                            {[
+
+                                { id: 'sunlight', label: 'Morning Sunlight 15m' },
+
+                                { id: 'water', label: '3L Hydration' },
+
+                                { id: 'fast', label: '4hr Pre-Sleep Fast' },
+
+                                { id: 'nasal', label: 'Nasal Breathing Only' }
+
+                            ].map(item => (
+
+                                <label key={item.id} className="flex items-center space-x-3 cursor-pointer group">
+
+                                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${checklist[item.id] ? 'bg-cyan-500 border-cyan-500' : 'border-gray-600 group-hover:border-cyan-500'}`}>
+
+                                        {checklist[item.id] && <span className="text-black text-xs font-bold">✓</span>}
+
+                                    </div>
+
+                                    <input type="checkbox" className="hidden" checked={checklist[item.id]} onChange={() => toggleChecklist(item.id)} />
+
+                                    <span className={`transition-colors ${checklist[item.id] ? 'text-gray-200' : 'text-gray-500 group-hover:text-gray-300'}`}>{item.label}</span>
+
+                                </label>
+
+                            ))}
+
+                        </div>
+
+                    </section>
+
+
+
                     <motion.section 
-                        className={`w-full glass-panel rounded-2xl p-6 border transition-all duration-500 ${readiness.border} ${readiness.bg}`}
-                        layout
+
+                        className={`w-full glass-panel rounded-2xl p-6 relative overflow-hidden transition-all duration-500 ${activeProtocol.state === 'Under-Recovered' ? 'border-red-500/30 bg-red-500/5' : ''}`}
+
+                        initial={{ y: 20, opacity: 0 }}
+
+                        animate={{ y: 0, opacity: 1 }}
+
+                        key={trainingMode + currentDayIndex}
+
                     >
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">System Readiness</h2>
-                            <span className={`text-[10px] px-2 py-1 rounded border font-bold uppercase tracking-widest ${readiness.color} ${readiness.border}`}>
-                                {readiness.state}
-                            </span>
+
+                        <div className="absolute top-0 right-0 p-4 opacity-[0.03] text-8xl font-black pointer-events-none">
+
+                            {todayWorkout.day}
+
                         </div>
 
-                        <div className="flex items-center justify-center py-4">
-                            <div className="relative flex items-center justify-center">
-                                <svg className="w-32 h-32 transform -rotate-90">
-                                    <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-gray-800" />
-                                    <circle 
-                                        cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="4" fill="transparent" 
-                                        strokeDasharray="364" 
-                                        strokeDashoffset={364 - (364 * readiness.score) / 100}
-                                        className={`${readiness.color} transition-all duration-1000 ease-out`} 
-                                        strokeLinecap="round"
-                                    />
-                                </svg>
-                                <div className="absolute flex flex-col items-center">
-                                    <span className="text-4xl font-mono font-bold tracking-tighter">{readiness.score}</span>
-                                    <span className="text-[9px] text-gray-500 uppercase tracking-widest">Score</span>
-                                </div>
-                            </div>
+                        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Current Session</h2>
+
+                        <h3 className={`text-3xl font-bold mb-2 tracking-tight ${todayWorkout.color}`}>{todayWorkout.type}</h3>
+
+                        
+
+                        <div className="bg-black/40 p-4 rounded-xl border border-gray-800/50 mb-6 shadow-inner">
+
+                            <p className="text-gray-300 text-sm font-medium leading-relaxed">{activeProtocol.instruction}</p>
+
                         </div>
 
-                        <div className="space-y-6 mt-4">
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-baseline">
-                                    <label className="text-xs font-bold text-gray-300 uppercase tracking-wider">Morning HRV (RMSSD)</label>
-                                    <span className="font-mono text-cyan-400">{inputHRV} <span className="text-gray-600 text-[10px]">ms</span></span>
-                                </div>
-                                <input type="range" min="20" max="150" value={inputHRV} onChange={(e) => setInputHRV(Number(e.target.value))} />
-                                <div className="flex justify-between text-[10px] text-gray-600 font-mono">
-                                    <span>7-Day Base: {rollingAverages.hrv}</span>
-                                    <span>{((inputHRV - rollingAverages.hrv) / rollingAverages.hrv * 100).toFixed(1)}%</span>
-                                </div>
+                        
+
+                        {activeProtocol.volume > 0 ? (
+
+                            <div className="flex items-baseline space-x-2">
+
+                                <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Dynamic Target:</span>
+
+                                <span className={`text-4xl font-mono ${activeProtocol.stateColor}`}>{activeProtocol.volume}</span>
+
+                                <span className="text-sm text-gray-500 uppercase">Mins</span>
+
                             </div>
 
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-baseline">
-                                    <label className="text-xs font-bold text-gray-300 uppercase tracking-wider">Resting Heart Rate</label>
-                                    <span className="font-mono text-red-400">{inputRHR} <span className="text-gray-600 text-[10px]">bpm</span></span>
-                                </div>
-                                <input type="range" min="35" max="85" value={inputRHR} onChange={(e) => setInputRHR(Number(e.target.value))} className="red-slider" />
-                                <div className="flex justify-between text-[10px] text-gray-600 font-mono">
-                                    <span>7-Day Base: {rollingAverages.rhr}</span>
-                                    <span>{((inputRHR - rollingAverages.rhr) / rollingAverages.rhr * 100).toFixed(1)}%</span>
-                                </div>
-                            </div>
-                        </div>
+                        ) : (
 
-                        <button 
-                            onClick={handleSaveToday}
-                            className="w-full mt-6 bg-white/5 hover:bg-white/10 border border-white/10 text-white py-3 rounded-lg text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
-                        >
-                            Log Daily Biometrics
-                        </button>
+                            <div className="flex items-baseline space-x-2">
+
+                                <span className="text-xs text-gray-500 uppercase font-bold tracking-wider">Status:</span>
+
+                                <span className={`text-2xl font-mono ${activeProtocol.stateColor}`}>Offline</span>
+
+                            </div>
+
+                        )}
+
                     </motion.section>
 
-                    {history.length > 0 && (
-                        <section className="w-full glass-panel rounded-xl p-5">
-                            <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest flex items-center justify-between">
-                                Biometric Trends <span className="text-[9px] text-gray-600">Last 14 Logs</span>
-                            </h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-black/40 p-3 rounded-lg border border-gray-800/50">
-                                    <div className="text-[10px] text-cyan-500 uppercase tracking-widest mb-2">HRV Trend</div>
-                                    <TrendChart data={history} dataKey="hrv" strokeColor="#00E5FF" />
-                                </div>
-                                <div className="bg-black/40 p-3 rounded-lg border border-gray-800/50">
-                                    <div className="text-[10px] text-red-500 uppercase tracking-widest mb-2">RHR Trend</div>
-                                    <TrendChart data={history} dataKey="rhr" strokeColor="#FF2A2A" />
-                                </div>
+
+
+                    <section className="w-full mt-4 glass-panel rounded-xl p-4 border-dashed border-gray-700/50 opacity-80 hover:opacity-100 transition-opacity">
+
+                        <div className="flex justify-between items-center">
+
+                            <div className="flex-1 pr-4">
+
+                                <h4 className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">Up Next ({tomorrowWorkout.day})</h4>
+
+                                <span className={`text-sm font-bold block ${tomorrowWorkout.color}`}>{tomorrowWorkout.type}</span>
+
                             </div>
-                        </section>
-                    )}
+
+                            <div className="text-right pl-4 border-l border-gray-800/50">
+
+                                <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1 block">Base Vol</span>
+
+                                <span className="text-sm font-mono text-cyan-500/80">
+
+                                    {tomorrowWorkout.baseVol > 0 ? `${tomorrowWorkout.baseVol}m` : 'Rest'}
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
                 </div>
+
             );
+
         };
 
+
+
         const root = ReactDOM.createRoot(document.getElementById('root'));
+
         root.render(<App />);
+
     </script>
+
 </body>
+
 </html>
